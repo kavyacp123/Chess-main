@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: chess_db
+      POSTGRES_USER: chess_user
+      POSTGRES_PASSWORD: chess_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/chess_db
+      - SPRING_DATASOURCE_USERNAME=chess_user
+      - SPRING_DATASOURCE_PASSWORD=chess_password
+    depends_on:
+      - postgres
+
+  websocket:
+    build:
+      context: ./apps/websocket
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - SPRING_BOOT_URL=http://api:8080
+      - JWT_SECRET=your-jwt-secret-key
+    depends_on:
+      - api
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_APP_BACKEND_URL=http://localhost:8080
+      - VITE_APP_WS_URL=ws://localhost:3001
+    depends_on:
+      - api
+      - websocket
+
+volumes:
+  postgres_data:
